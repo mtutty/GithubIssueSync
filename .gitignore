@@ -1,0 +1,67 @@
+#OS junk files
+[Tt]humbs.db
+*.DS_Store
+
+#Visual Studio files
+*.[Oo]bj
+*.user
+*.aps
+*.pch
+*.vspscc
+*.vssscc
+*_i.c
+*_p.c
+*.ncb
+*.suo
+*.tlb
+*.tlh
+*.bak
+*.[Cc]ache
+*.ilk
+*.log
+*.lib
+*.sbr
+*.sdf
+*.opensdf
+*.unsuccessfulbuild
+ipch/
+[Oo]bj/
+debug*/
+release*/
+Debug*/
+Release*/
+Ankh.NoLoad
+PrecompiledWeb
+log4net
+dist
+build
+
+#Tooling
+_ReSharper*/
+*.resharper
+[Tt]est[Rr]esult*
+
+#Project files
+[Bb]uild/
+
+#Subversion files
+.svn
+
+#vault
+_sgback/
+
+# Office Temp Files
+~$*
+
+# timestamp files for sprites
+*timeStamp.dat
+# report temp files
+Reports/Temp/*.pdf
+
+#NuGet
+# actually, we want these: 
+# http://stackoverflow.com/questions/7374591/recursively-include-nuget-dlls-via-gitignore
+#packages/
+
+# NUnit
+*.Result.xml
