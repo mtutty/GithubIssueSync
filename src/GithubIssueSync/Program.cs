@@ -1,13 +1,5 @@
 ﻿using System;
-using System.Collections.Generic;
-using System.Linq;
-using System.Text;
 using CommandLine;
-using System.Reflection;
-using GithubSharp.Core.Services;
-using model = GithubSharp.Core.Models;
-using GithubSharp.Plugins.AuthProviders.UserPasswordAuthProvider;
-using GithubSharp.Plugins.CacheProviders.ApplicationCacher;
 
 namespace GithubIssueSync {
     public class Program : CommandLineProgram<Program, Program.Arguments> {
@@ -16,7 +8,7 @@ namespace GithubIssueSync {
             me.RunProgram(args);
         }
 
-        public override void Validate(Arguments arguments) {
+        protected override void Validate(Arguments arguments) {
             if (arguments == null) throw new ArgumentNullException(@"Arguments", @"Program arguments cannot be null");
 
             RequireString(@"Repository Name", arguments.RepositoryName);
@@ -32,21 +24,11 @@ namespace GithubIssueSync {
             }
         }
 
-        public override void Run(Arguments args) {
+        protected override void Run(Arguments args) {
             Out(@"Github Issues Sync:  Using settings: {0}", args);
-
-            IAuthProvider auth;
-            if (string.IsNullOrEmpty(args.Token)) {
-                auth = new UserPasswordAuthProvider(args.UserName, args.Password);
-
-                IAuthResponse resp = auth.Login();
-                if (!resp.Success) throw new Exception(string.Format(@"Authentication of user {0} to Github API failed. {1}", args.UserName, resp.Message));
-            } else {
-                auth = new UserPasswordAuthProvider(args.Token);
-                auth.RestoreFromToken(args.Token);
-            }
-
-            ICacheProvider cache = new ApplicationCacher();
+            Client.GithubClient client = new Client.GithubClient();
+            client.Authenticate(args.UserName, args.Password);
+            Out(client.User.ToString());
         }
 
         public class Arguments {
