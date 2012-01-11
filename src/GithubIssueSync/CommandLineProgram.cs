@@ -5,8 +5,10 @@ using System.Text;
 using CommandLine;
 using System.Reflection;
 
-namespace GithubIssueSync {
-    public abstract class CommandLineProgram<P, T> where P: new() where T : new() {
+namespace ConsoleApplication {
+    public abstract class CommandLineProgram<P, T>
+        where P : new()
+        where T : new() {
         public void RunProgram(string[] args) {
             var arguments = new T();
             ICommandLineParser parser = new CommandLineParser();
@@ -27,13 +29,15 @@ namespace GithubIssueSync {
                     Out(ex.Message);
                     Out(ex.StackTrace);
                 }
+                Exit(arguments);
             } else {
                 Out(HelpText(arguments));
             }
         }
 
-        protected abstract void Validate(T arguments);
+        protected virtual void Validate(T arguments) { }
         protected abstract void Run(T arguments);
+        protected virtual void Exit(T arguments) { return; }
 
         #region Console I/O methods
         protected bool YesOrNo(string template, params object[] vars) {

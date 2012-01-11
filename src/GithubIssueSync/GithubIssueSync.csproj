@@ -50,9 +50,12 @@
   </ItemGroup>
   <ItemGroup>
     <Compile Include="Client\GithubClient.cs" />
+    <Compile Include="Client\MockGithubClient.cs" />
     <Compile Include="CommandLineProgram.cs" />
     <Compile Include="Program.cs" />
     <Compile Include="Properties\AssemblyInfo.cs" />
+    <Compile Include="Util\CSVToDataTable.cs" />
+    <Compile Include="Util\JsonToCSV.cs" />
   </ItemGroup>
   <ItemGroup>
     <None Include="packages.config" />
