@@ -7,6 +7,7 @@ using System.IO;
 using Newtonsoft.Json.Linq;
 using Newtonsoft.Json;
 using System.Data;
+using System.Collections.Specialized;
 
 namespace GithubIssueSync.Client {
     public class GithubClient {
@@ -81,58 +82,87 @@ namespace GithubIssueSync.Client {
             return JObject.Parse(response);
         }
 
-        protected static DataTable JsonToDataTable(string rawJson) {
+        protected static void AppendJsonData(string rawJson, DataTable dt) {
             string json = string.Format("{0}result: {1}{2}", @"{", rawJson, @"}");
 
-            DataTable ret = new DataTable();
             JObject root = JObject.Parse(json);
             JArray items = (JArray)root["result"];
-            JObject item;
-            JToken jtoken;
-            JProperty prop;
-            string propName;
 
-            if (items.Count > 0) {
-                item = (JObject)items[0];
-                jtoken = item.First;
+            foreach (JObject item in items) {
 
-                while (jtoken != null) {
-                    prop = jtoken as JProperty;
-                    propName = prop.Name.ToString();
-                    if (prop != null && prop.Type != JTokenType.Array && prop.Type != JTokenType.Constructor)
-                        ret.Columns.Add(propName);
-                    jtoken = jtoken.Next;
+                DataRow dr = dt.NewRow();
+
+                string temp;
+                foreach (DataColumn col in dt.Columns) {
+                    JToken val = item.SelectToken(col.Caption);
+                    if (val == null) continue;
+                    dr[col] = val.ToString();
                 }
+                dt.Rows.Add(dr);
             }
+            dt.AcceptChanges();
+        }
 
-            for (int i = 0; i < items.Count; i++) {
+        private static DataTable CreateIssuesTable() {
+            DataTable ret = new DataTable(@"GithubIssues");
+            StringDictionary sd = new StringDictionary();
 
-                DataRow dr = ret.NewRow();
-                item = (JObject)items[i];
-                jtoken = item.First;
+            sd.Add(@"id", @"id");
+            sd.Add("state", "state");
+            sd.Add("milestone", "milestone.title");
+            sd.Add("user", "user.login");
+            sd.Add("created_at", "created_at");
+            sd.Add("assignee", "assignee.login");
+            sd.Add("updated_at", "updated_at");
+            sd.Add("title", "title");
+            sd.Add("labels", "labels[0].name");
+            sd.Add("comments", "comments");
+            sd.Add("number", "number");
+            sd.Add("html_url", "html_url");
+            sd.Add("pull_request", "pull_request.html_url");
+            sd.Add("url", "url");
+            sd.Add("closed_at", "closed_at");
 
-                while (jtoken != null) {
-                    prop = jtoken as JProperty;
-                    propName = prop.Name.ToString();
-                    if (prop != null && ret.Columns.Contains(propName))
-                        dr[propName] = prop.Value.ToString();
-                    jtoken = jtoken.Next;
-                }
-                ret.Rows.Add(dr);
+            foreach (string colName in sd.Keys) {
+                ret.Columns.Add(colName).Caption = sd[colName];
             }
-            ret.AcceptChanges();
             return ret;
         }
 
+        private static string GetName(JToken token) {
+            JProperty prop = token as JProperty;
+            if (prop == null) return string.Empty;
+            return prop.Name;
+        }
 
         public DataTable RequestToDataTable(string requestPath) {
-            return JsonToDataTable(GetRequest(requestPath));
+            DataTable ret = CreateIssuesTable();
+            AppendJsonData(GetRequest(requestPath), ret);
+            return ret;
+        }
+
+        public DataTable ListIssues(string userOrOrg, string repo, DateTime? since) {
+            // GET /repos/:user/:repo/issues
+            int pageSize = 100;
+            int page = 0;
+
+            string template = @"/repos/{0}/{1}/issues?state=open,closed&page={2}&per_page={3}";
+            if (since.HasValue)
+                template = @"/repos/{0}/{1}/issues?state=closed&page={2}&per_page={3}&since={4:s}&sort=updated&direction=desc";
+            DataTable ret = CreateIssuesTable();
+
+            while (ret.Rows.Count == (page * pageSize)) {
+                if (since.HasValue)
+                    AppendJsonData(GetRequest(string.Format(template, userOrOrg, repo, page++, pageSize, since)), ret);
+                else
+                    AppendJsonData(GetRequest(string.Format(template, userOrOrg, repo, page++, pageSize)), ret);
+            };
+
+            return ret;
         }
 
         public DataTable ListIssues(string userOrOrg, string repo) {
-            // GET /repos/:user/:repo/issues
-            string requestPath = string.Format(@"/repos/{0}/{1}/issues", userOrOrg, repo);
-            return RequestToDataTable(requestPath);
+            return ListIssues(userOrOrg, repo, null);
         }
 
         public DataTable ListIssues(string filter, int pageSize, int pageNum, string sortField, bool sortAscending) {

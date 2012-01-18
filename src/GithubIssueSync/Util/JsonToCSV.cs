@@ -1,6 +1,7 @@
 ﻿using System.Data;
 using System.Collections;
 using System.IO;
+using System.Text;
 
 namespace GithubIssueSync.Util {
     public class JsonToCSV {
@@ -21,7 +22,21 @@ namespace GithubIssueSync.Util {
         }
 
         public static string ValueList(DataRow row) {
-            return string.Join(@", ", row.ItemArray);
+            StringBuilder sb = new StringBuilder();
+            string delim = @"";
+            foreach (object field in row.ItemArray) {
+                sb.Append(delim);
+                if (field != null)
+                    sb.Append(QuotedString(field.ToString()));
+                delim = @",";
+            }
+            return sb.ToString();
+        }
+
+        public static string QuotedString(string val) {
+            string temp = val.Replace("\"", "\\\"");
+            if (temp.Contains(",")) temp = "\"" + temp + "\"";
+            return temp;
         }
     }
 }

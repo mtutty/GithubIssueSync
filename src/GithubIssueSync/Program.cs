@@ -24,13 +24,13 @@ namespace GithubIssueSync {
                 }
             }
             if (string.IsNullOrEmpty(arguments.ImportFile) &&
-                string.IsNullOrEmpty(arguments.ExportFile)) {
-                    throw new ArgumentNullException(@"Import/Export File", @"Either Import File or Export File must be specified");
+                string.IsNullOrEmpty(arguments.ExportFile) &&
+                arguments.Summarize == false) {
+                    throw new ArgumentNullException(@"Import/Export/Summarize", @"Either Import File or Export File must be specified, or Summarize must be specified");
             }
         }
 
         protected override void Run(Arguments args) {
-            Out(@"Github Issues Sync:  Using settings: {0}", args);
             Client.GithubClient client = null;
             if (args.MockClient) {
                 client = new Client.MockGithubClient();
@@ -47,11 +47,16 @@ namespace GithubIssueSync {
                 }
             }
 
-            if (string.IsNullOrEmpty(args.ImportFile) == false) {
-                DataTable response = client.ListIssues(args.OrgName ?? args.UserName, args.RepositoryName);
-                string outputFile = Path.Combine(System.Environment.CurrentDirectory, args.ImportFile);
-                using (TextWriter tw = new StreamWriter(new FileStream(outputFile, FileMode.Create), System.Text.Encoding.UTF8)) {
-                    Util.JsonToCSV.WriteAll(response, tw);
+            if (string.IsNullOrEmpty(args.ImportFile) == false || args.Summarize) {
+                DataTable response = client.ListIssues(args.OrgName ?? args.UserName, args.RepositoryName, args.ClosedSince);
+                if (args.Summarize) {
+                    WriteSummary(response);
+                }
+                if (string.IsNullOrEmpty(args.ImportFile) == false) {
+                    string outputFile = Path.Combine(System.Environment.CurrentDirectory, args.ImportFile);
+                    using (TextWriter tw = new StreamWriter(new FileStream(outputFile, FileMode.Create), System.Text.Encoding.UTF8)) {
+                        Util.JsonToCSV.WriteAll(response, tw);
+                    }
                 }
             }
         }
@@ -60,13 +65,31 @@ namespace GithubIssueSync {
             if (arguments.WaitForExit) WaitForExit();
         }
 
+        protected void WriteSummary(DataTable dt) {
+            Out(@"Issue # [Milestone] Title");
+            Separator();
+            foreach (DataRow dr in dt.Rows) {
+                string pull = Convert.ToString(dr[@"pull_request"]);
+                if (string.IsNullOrEmpty(pull)) {
+                    Out(@"#{0} [{1}] {2}", dr[@"number"], dr[@"milestone"], dr[@"title"]);
+                }
+            }
+            Separator();
+        }
+
         public class Arguments {
 
             [Option(@"q", @"mock", HelpText = @"Use a mock github client that does not require Internet access.  For testing only.")]
             public bool MockClient = false;
 
-            [Option(@"m", @"milestone", HelpText = @"The milestone ID to use when creating tasks from the Export file.")]
+            [Option(@"z", @"summarize", HelpText = @"Produce a brief summary line for each issue, output to stdout.  Pull requests are excluded from the output.")]
+            public bool Summarize = false;
+
+            [Option(@"m", @"milestone", HelpText = @"The milestone ID to use when creating tasks from the Export file.  Ignored for Import.")]
             public int Milestone = 0;
+
+            [Option(@"s", @"since", HelpText = @"Import all (non-pull-request) issues closed AFTER the specified date.")]
+            public DateTime? ClosedSince = null;
 
             [Option(@"o", @"org", HelpText = @"The organization under which the repository lives.  If empty, the user name is used instead.")]
             public string OrgName = null;
